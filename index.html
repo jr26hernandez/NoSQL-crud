@@ -2,179 +2,199 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Firestore CRUD</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Firestore CRUD UI</title>
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #d0e6f7;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #bbd2e8;
+      color: #333;
       margin: 0;
       padding: 2rem;
       display: flex;
       justify-content: center;
     }
-
     .container {
-      background: white;
-      padding: 2rem;
+      background: #fff;
+      padding: 3rem;
       border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.1);
-      max-width: 600px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      max-width: 700px;
       width: 100%;
     }
-
     h1 {
       text-align: center;
       color: #2c3e50;
+      margin-bottom: 1.5rem;
     }
-
     form {
       display: flex;
-      flex-direction: column;
       gap: 1rem;
       margin-bottom: 2rem;
     }
-
-    input {
-      padding: 0.75rem;
+    input[type="text"], input[type="email"] {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 2px solid #ddd;
       border-radius: 8px;
-      border: 1px solid #ccc;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
     }
-
+    input:focus { border-color: #2980b9; outline: none; }
     button {
-      padding: 0.75rem;
-      border-radius: 8px;
-      border: none;
-      background-color: #3498db;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:hover {
       background-color: #2980b9;
-    }
-
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    li {
-      background: #f4f4f4;
-      padding: 1rem;
-      margin-bottom: 1rem;
+      color: white;
+      border: none;
       border-radius: 8px;
+      padding: 0 1.5rem;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+    }
+    button:hover { background-color: #1c5980; }
+    ul { list-style: none; padding: 0; }
+    li {
+      background: #ecf0f1;
+      padding: 1rem 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
-
+    .user-info { max-width: 60%; }
+    .user-name { font-weight: 700; color: #34495e; }
+    .user-email { font-size: 0.9rem; color: #7f8c8d; }
     .actions button {
-      margin-left: 0.5rem;
-      padding: 0.5rem 0.75rem;
+      margin-left: 0.75rem;
+      background-color: #3498db;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
       border-radius: 6px;
-      border: none;
-      cursor: pointer;
     }
-
-    .actions .edit {
-      background-color: #f39c12;
-      color: white;
-    }
-
-    .actions .delete {
-      background-color: #e74c3c;
-      color: white;
+    .actions button.delete { background-color: #e74c3c; }
+    .actions button:hover { opacity: 0.9; }
+    @media (max-width: 480px) {
+      form { flex-direction: column; }
+      button { width: 100%; }
+      li { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .actions { align-self: flex-end; }
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Firestore CRUD Demo</h1>
+    <form id="userForm">
+      <input type="text" id="name" placeholder="Name" required />
+      <input type="email" id="email" placeholder="Email" required />
+      <button type="submit">Add</button>
+    </form>
+    <ul id="userList"></ul>
+  </div>
 
-<div class="container">
-  <h1>Firestore CRUD</h1>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  <form id="userForm">
-    <input type="text" id="name" placeholder="Enter name" required>
-    <input type="email" id="email" placeholder="Enter email" required>
-    <button type="submit">Add User</button>
-  </form>
+    // ✅ Replace with your actual Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
-  <ul id="userList"></ul>
-</div>
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const usersCol = collection(db, 'users');
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+    const userForm = document.getElementById('userForm');
+    const userList = document.getElementById('userList');
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    // 🔄 Load existing users
+    async function loadUsers() {
+      userList.innerHTML = '';
+      const snapshot = await getDocs(usersCol);
+      snapshot.forEach(docSnap => {
+        const user = docSnap.data();
+        addUserToUI(docSnap.id, user.name, user.email);
+      });
+    }
 
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_BUCKET",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const usersCol = collection(db, "users");
-
-  const userForm = document.getElementById('userForm');
-  const userList = document.getElementById('userList');
-
-  userForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = userForm.name.value.trim();
-    const email = userForm.email.value.trim();
-    if (!name || !email) return alert("Both fields required!");
-
-    await addDoc(usersCol, { name, email });
-    userForm.reset();
-    loadUsers();
-  });
-
-  async function loadUsers() {
-    const snapshot = await getDocs(usersCol);
-    userList.innerHTML = '';
-    snapshot.forEach(docSnap => {
-      const user = docSnap.data();
+    // ➕ Add user to UI
+    function addUserToUI(id, name, email) {
       const li = document.createElement('li');
-
       li.innerHTML = `
-        <span><strong>${user.name}</strong><br>${user.email}</span>
+        <span><strong>${name}</strong><br>${email}</span>
         <div class="actions">
-          <button class="edit" onclick="editUser('${docSnap.id}', '${user.name}', '${user.email}')">Edit</button>
-          <button class="delete" onclick="deleteUser('${docSnap.id}')">Delete</button>
+          <button class="edit" onclick="editUser('${id}', '${name}', '${email}')">Edit</button>
+          <button class="delete" onclick="deleteUser('${id}')">Delete</button>
         </div>
       `;
       userList.appendChild(li);
-    });
-  }
-
-  window.editUser = async (id, oldName, oldEmail) => {
-    const name = prompt("New name:", oldName);
-    const email = prompt("New email:", oldEmail);
-    if (!name || !email) return;
-
-    const userRef = doc(db, "users", id);
-    await updateDoc(userRef, { name, email });
-    loadUsers();
-  };
-
-  window.deleteUser = async (id) => {
-    if (confirm("Are you sure to delete this user?")) {
-      await deleteDoc(doc(db, "users", id));
-      loadUsers();
     }
-  };
 
-  loadUsers();
-</script>
+    // 🚀 Add new user with optimistic update
+    userForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = userForm.name.value.trim();
+      const email = userForm.email.value.trim();
+      if (!name || !email) return alert("Both fields required!");
 
+      const li = document.createElement('li');
+      const tempId = Date.now();
+      li.setAttribute('id', 'user-' + tempId);
+      li.innerHTML = `
+        <span><strong>${name}</strong><br>${email}</span>
+        <div class="actions"><button disabled>Saving...</button></div>
+      `;
+      userList.appendChild(li);
+
+      try {
+        const docRef = await addDoc(usersCol, { name, email });
+        const newLi = document.createElement('li');
+        newLi.innerHTML = `
+          <span><strong>${name}</strong><br>${email}</span>
+          <div class="actions">
+            <button class="edit" onclick="editUser('${docRef.id}', '${name}', '${email}')">Edit</button>
+            <button class="delete" onclick="deleteUser('${docRef.id}')">Delete</button>
+          </div>
+        `;
+        userList.replaceChild(newLi, document.getElementById('user-' + tempId));
+      } catch (err) {
+        alert("Error: " + err.message);
+        document.getElementById('user-' + tempId)?.remove();
+      }
+
+      userForm.reset();
+    });
+
+    // ✏️ Edit user
+    window.editUser = async (id, oldName, oldEmail) => {
+      const name = prompt("Edit Name:", oldName);
+      if (name === null || name.trim() === '') return;
+      const email = prompt("Edit Email:", oldEmail);
+      if (email === null || email.trim() === '') return;
+
+      await updateDoc(doc(db, "users", id), { name: name.trim(), email: email.trim() });
+      await loadUsers();
+    };
+
+    // ❌ Delete user
+    window.deleteUser = async (id) => {
+      if (!confirm("Delete this user?")) return;
+      await deleteDoc(doc(db, "users", id));
+      await loadUsers();
+    };
+
+    loadUsers();
+  </script>
 </body>
 </html>
